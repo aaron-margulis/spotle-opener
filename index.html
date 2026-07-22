@@ -1,0 +1,568 @@
+<title>The Optimal Spotle Opener</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:      #f5f6f3;
+    --surface:   #ffffff;
+    --surface-2: #eef1ee;
+    --ink:       #14201c;
+    --ink-2:     #46534d;
+    --muted:     #8b968f;
+    --hair:      #dde2de;
+    --accent:    #1f6f5c;
+    --accent-ink: #ffffff;
+    --accent-wash: #e4efec;
+    --gold:      #a8792c;
+    --gold-wash: #f6ecd9;
+    --bar:       #1f6f5c;
+    --bar-track: #dbe7e3;
+    --good:      #1f8f4e;
+    --warn:      #b5811a;
+    --neutral-bar: #97a099;
+    --unknown-bar: #c7cdc8;
+    --shadow: 0 1px 2px rgba(20,32,28,0.06), 0 8px 24px rgba(20,32,28,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:      #101512;
+      --surface:   #161d1a;
+      --surface-2: #1b2320;
+      --ink:       #edf1ee;
+      --ink-2:     #b6c1ba;
+      --muted:     #7c8781;
+      --hair:      #2a332e;
+      --accent:    #57bc9f;
+      --accent-ink: #08120f;
+      --accent-wash: #17332b;
+      --gold:      #d9ac5c;
+      --gold-wash: #2e2717;
+      --bar:       #57bc9f;
+      --bar-track: #26312c;
+      --good:      #4ecb85;
+      --warn:      #e2ab52;
+      --neutral-bar: #57635c;
+      --unknown-bar: #3a433d;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:      #101512;
+    --surface:   #161d1a;
+    --surface-2: #1b2320;
+    --ink:       #edf1ee;
+    --ink-2:     #b6c1ba;
+    --muted:     #7c8781;
+    --hair:      #2a332e;
+    --accent:    #57bc9f;
+    --accent-ink: #08120f;
+    --accent-wash: #17332b;
+    --gold:      #d9ac5c;
+    --gold-wash: #2e2717;
+    --bar:       #57bc9f;
+    --bar-track: #26312c;
+    --good:      #4ecb85;
+    --warn:      #e2ab52;
+    --neutral-bar: #57635c;
+    --unknown-bar: #3a433d;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+  .display {
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  }
+
+  header.masthead {
+    border-bottom: 1px solid var(--hair);
+    padding-bottom: 24px;
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-size: 12.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: 40px;
+    line-height: 1.1;
+    margin: 0 0 12px;
+    text-wrap: balance;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .dek {
+    font-size: 17px;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0 0 16px;
+    text-wrap: pretty;
+  }
+  .tools-teaser {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 100px;
+    background: var(--accent-wash);
+  }
+  .tools-teaser:hover { text-decoration: underline; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 23px;
+    font-weight: 600;
+    margin: 48px 0 14px;
+    letter-spacing: -0.005em;
+  }
+  h2 .num {
+    color: var(--muted);
+    font-weight: 400;
+    margin-right: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; }
+  p { margin: 0 0 14px; max-width: 66ch; }
+  .lede-p { color: var(--ink-2); }
+
+  /* TL;DR recommendation card */
+  .picks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 18px 0 8px;
+  }
+  @media (max-width: 640px) { .picks { grid-template-columns: 1fr; } }
+  .pick-card {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .pick-label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .pick-title {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .pick-year { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; margin-bottom: 10px; }
+  .pick-note { font-size: 14px; color: var(--ink-2); margin: 0; }
+  .metric-row { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; }
+  .metric { color: var(--ink-2); }
+  .metric b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* Attribute clue key */
+  .clue-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 18px 0 8px;
+  }
+  @media (max-width: 640px) { .clue-grid { grid-template-columns: repeat(2, 1fr); } }
+  .clue {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .clue-name { font-size: 12.5px; font-weight: 600; margin-bottom: 3px; }
+  .clue-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* Definition cards */
+  .def-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 18px 0 8px;
+  }
+  @media (max-width: 640px) { .def-grid { grid-template-columns: 1fr; } }
+  .def-card {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .def-term { font-family: Georgia, "Iowan Old Style", serif; font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .def-body { font-size: 13.5px; color: var(--ink-2); }
+  .def-body b { color: var(--ink); }
+
+  /* Bar chart */
+  .chart {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 10px;
+    padding: 20px 22px 10px;
+    margin: 18px 0;
+    box-shadow: var(--shadow);
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .chart-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; }
+  .bar-row { display: grid; grid-template-columns: 120px 1fr 96px; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-name { font-size: 13px; color: var(--ink-2); text-align: right; }
+  .bar-track { background: var(--bar-track); border-radius: 5px; height: 20px; overflow: hidden; }
+  .bar-fill { background: var(--bar); height: 100%; border-radius: 4px 5px 5px 4px; }
+  .bar-val { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .chart-foot { font-size: 11.5px; color: var(--muted); margin: 10px 0 4px; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--hair); border-radius: 10px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13.5px; min-width: 560px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--hair);
+    background: var(--surface-2);
+  }
+  thead th.num, td.num { text-align: right; }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td.title { font-variant-numeric: normal; font-weight: 500; }
+  tbody tr:nth-child(1) td.title { color: var(--accent); font-weight: 700; }
+  .rank { color: var(--muted); font-size: 12px; width: 22px; }
+
+  .callout {
+    background: var(--gold-wash);
+    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 14px;
+    color: var(--ink-2);
+    margin: 18px 0;
+  }
+  .callout b { color: var(--ink); }
+
+  /* Cast hit distribution mini-figure */
+  .hit-figure {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 90px;
+    margin: 18px 0 6px;
+    padding: 0 2px;
+  }
+  .hit-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .hit-bar .stem { width: 100%; max-width: 46px; background: var(--accent); border-radius: 4px 4px 2px 2px; }
+  .hit-bar.zero .stem { background: var(--neutral-bar); }
+  .hit-bar .pct { font-size: 10.5px; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .hit-bar .lbl { font-size: 10.5px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+  /* CTA card */
+  .cta-card {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 12px;
+    padding: 28px 28px;
+    margin: 40px 0;
+    box-shadow: var(--shadow);
+  }
+  .cta-card h3 { color: var(--accent-ink); margin: 0 0 8px; font-family: Georgia, "Iowan Old Style", serif; font-size: 19px; }
+  .cta-card p { color: color-mix(in srgb, var(--accent-ink) 88%, transparent); margin: 0 0 16px; font-size: 14px; }
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-ink);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+  }
+  .cta-btn:hover { opacity: 0.9; }
+
+  /* Collapsible methodology */
+  details.methodology {
+    background: var(--surface);
+    border: 1px solid var(--hair);
+    border-radius: 10px;
+    padding: 4px 18px;
+    margin: 18px 0;
+  }
+  details.methodology summary {
+    cursor: pointer;
+    padding: 14px 0;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    list-style: none;
+  }
+  details.methodology summary::-webkit-details-marker { display: none; }
+  details.methodology summary::before {
+    content: '+';
+    display: inline-block;
+    width: 18px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  details.methodology[open] summary::before { content: '\2212'; }
+  details.methodology[open] summary { border-bottom: 1px solid var(--hair); }
+
+  .fine {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    padding-bottom: 14px;
+  }
+  .fine li { margin-bottom: 8px; }
+  .fine ul { padding-left: 20px; margin: 8px 0 0; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--hair);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Spotle Movies &middot; opening-guess research</p>
+    <h1 class="display">Genre beats star power</h1>
+    <p class="dek">A data-driven search for the best possible first guess in Spotle Movies, built directly from the TMDB API &mdash; and why the instinct to open with a famous, star-studded blockbuster is backwards.</p>
+    <a class="tools-teaser" href="simulator.html">Try the interactive simulator &rarr;</a>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>The problem, and how I approached it</h2>
+    <p class="lede-p">Spotle Movies is Wordle for movies: guess a film, get eight clues back, and win within ten guesses. The question: what's the single best opening guess?</p>
+    <div class="clue-grid">
+      <div class="clue"><div class="clue-name">Genres</div><div class="clue-desc">TMDB genre tags per film; each shared genre lights up green</div></div>
+      <div class="clue"><div class="clue-name">Year</div><div class="clue-desc">Green = exact. Yellow = within 5 yrs, with a direction arrow</div></div>
+      <div class="clue"><div class="clue-name">Box office</div><div class="clue-desc">Green = exact. Yellow = within $100M, with a direction arrow</div></div>
+      <div class="clue"><div class="clue-name">Score</div><div class="clue-desc">TMDB rating, shown 0&ndash;100 as a whole number. Green = exact. Yellow = within 5 pts, with a direction arrow</div></div>
+      <div class="clue"><div class="clue-name">Cast</div><div class="clue-desc">Lead + 4 supporting. Green = same actor, same role type. Yellow = same actor, other role type</div></div>
+      <div class="clue"><div class="clue-name">Studio</div><div class="clue-desc">Green = same studio. Yellow = sister label (Pixar&harr;Disney)</div></div>
+      <div class="clue"><div class="clue-name">Director</div><div class="clue-desc">Green = same director. Yellow = co-directed a film together, elsewhere</div></div>
+      <div class="clue"><div class="clue-name">Rated</div><div class="clue-desc">Green = same US MPAA rating</div></div>
+    </div>
+
+    <h3>Measuring "good"</h3>
+    <p class="lede-p">To rank thousands of candidates, I needed a precise definition of "informative": check a guess against every other film in the pool, and see how much its clues narrow things down.</p>
+    <div class="def-grid">
+      <div class="def-card">
+        <div class="def-term">Expected remaining</div>
+        <div class="def-body">How many films stay consistent with a guess's clues, <b>on average</b>. Lower is better &mdash; 3,000 means the guess told you nothing; 1 means it solved the puzzle.</div>
+      </div>
+      <div class="def-card">
+        <div class="def-term">Entropy, in bits</div>
+        <div class="def-body">The same idea in information-theory terms. Each bit roughly <b>halves</b> the field. A useless clue is 0 bits; one that pins down a single film is about 11.6 bits (log&#8322; of 3,000).</div>
+      </div>
+    </div>
+    <p class="lede-p">Entropy is what lets very different clues &mdash; a genre match, a score band &mdash; be compared on one scale, which is what the next section does.</p>
+    <p class="lede-p">The pool: 3,000 titles pulled live from TMDB, sized to Spotle's own description of a "curated ~3,000 film library," and checked against 20 real Spotle answers from the past month &mdash; 20 for 20 matched. Full methodology at the bottom.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Which clues actually narrow the field</h2>
+    <p class="lede-p">I simulated every guess against the pool and measured how much each clue narrows the field alone, averaged across 500 random guesses.</p>
+    <div class="chart">
+      <div class="chart-title">Average information gained, by attribute</div>
+      <div class="chart-sub">Shannon entropy in bits (higher = narrows the field more). Max possible: 11.6 bits.</div>
+
+      <div class="bar-row"><div class="bar-name">Genres</div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-val">1.95 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Score</div><div class="bar-track"><div class="bar-fill" style="width:86.8%"></div></div><div class="bar-val">1.70 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Year</div><div class="bar-track"><div class="bar-fill" style="width:79.6%"></div></div><div class="bar-val">1.56 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Box office</div><div class="bar-track"><div class="bar-fill" style="width:74.5%"></div></div><div class="bar-val">1.46 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Rated</div><div class="bar-track"><div class="bar-fill" style="width:48.3%"></div></div><div class="bar-val">0.94 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Studio</div><div class="bar-track"><div class="bar-fill" style="width:20.4%"></div></div><div class="bar-val">0.40 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Cast (5 slots)</div><div class="bar-track"><div class="bar-fill" style="width:5.4%"></div></div><div class="bar-val">0.10 bits</div></div>
+      <div class="bar-row"><div class="bar-name">Director</div><div class="bar-track"><div class="bar-fill" style="width:0.8%"></div></div><div class="bar-val">0.02 bits</div></div>
+
+      <div class="chart-foot">Genres alone beats Cast and Director combined, by about 16&times;.</div>
+    </div>
+    <p class="lede-p">Genre match narrows more than a simple count would suggest &mdash; "Western" rules out far more than "Drama," since westerns are rare and dramas aren't, and the model credits that exact distinction. Cast almost never overlaps: a guess's five billed actors are absent from the other 2,999 films the vast majority of the time, so an all-star cast mostly just says "not this film." Rated is a solid mid-tier clue &mdash; only six ratings exist, so a match or miss splits a meaningful chunk of the pool. Score edges out Year because it's shown as a precise 0&ndash;100 integer.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>The cast paradox: rare, but powerful when it hits</h2>
+    <p class="lede-p">Averaging cast to "nearly useless" hides something: it's an all-or-nothing clue. How often a guess's five actors show up at all in the target, across 500 sampled guesses:</p>
+    <div class="hit-figure">
+      <div class="hit-bar zero"><span class="pct">98.9%</span><div class="stem" style="height:100%"></div><span class="lbl">0 of 5<br>match</span></div>
+      <div class="hit-bar"><span class="pct">1.03%</span><div class="stem" style="height:8%"></div><span class="lbl">1 of 5</span></div>
+      <div class="hit-bar"><span class="pct">0.02%</span><div class="stem" style="height:2%"></div><span class="lbl">2 of 5</span></div>
+      <div class="hit-bar"><span class="pct">0.01%</span><div class="stem" style="height:2%"></div><span class="lbl">3 of 5</span></div>
+      <div class="hit-bar"><span class="pct">&lt;0.01%</span><div class="stem" style="height:2%"></div><span class="lbl">4 of 5</span></div>
+      <div class="hit-bar"><span class="pct">&lt;0.01%</span><div class="stem" style="height:2%"></div><span class="lbl">5 of 5</span></div>
+    </div>
+    <div class="callout">
+      <b>One hit is valuable &mdash; it's just rare.</b> 99% of the time nothing matches and the field barely narrows. But the ~1% of the time exactly one actor <em>does</em> show up, the pool collapses to an average of <b>~31 films</b> &mdash; a 100&times; narrowing from a single yellow or green cast tile. Not a reason to pick your opener, but worth jumping on the moment it appears in any guess's results.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>The optimal answer</h2>
+    <p class="lede-p">Two answers: the theoretical best, and something you'd actually remember at 7am.</p>
+    <div class="picks">
+      <div class="pick-card">
+        <p class="pick-label">Best you'll actually remember</p>
+        <p class="pick-title">The Equalizer</p>
+        <p class="pick-year">2014</p>
+        <p class="pick-note">Best expected split among the ~300 most recognizable films in the pool &mdash; a Denzel Washington thriller almost anyone can type from memory.</p>
+        <div class="metric-row">
+          <span class="metric">avg. left after guessing <b>~11</b> of 3,000</span>
+        </div>
+      </div>
+      <div class="pick-card">
+        <p class="pick-label">Theoretical best (any film)</p>
+        <p class="pick-title">Allied</p>
+        <p class="pick-year">2016</p>
+        <p class="pick-note">Brad Pitt / Marion Cotillard WWII spy-romance. Wins outright, but ranks outside the top 2,000 by popularity.</p>
+        <div class="metric-row">
+          <span class="metric">avg. left after guessing <b>~7</b> of 3,000</span>
+        </div>
+      </div>
+    </div>
+    <p class="lede-p" style="margin-top:14px">Skip the ensemble-cast blockbuster instinct &mdash; a distinctive genre mix and a mid-range year, score, and box office beats a famous tentpole almost every time.</p>
+
+    <h3>Optimizing for fewest total guesses</h3>
+    <p class="lede-p">These rankings measure the first cut, not the whole game &mdash; a guess can leave a small set that's awkward to finish (everything sharing the same genre and year) versus a slightly bigger, easier-to-split one. To check, I simulated full games: greedily pick the best next guess within whatever's left, turn after turn, and average the total guesses needed to win. (A truly exhaustive optimal-play search &mdash; trying every possible sequence, the way solved-Wordle research does &mdash; is out of reach for 3,000 films here; greedy is the standard near-optimal approximation, run on the ~120 strongest 1-step candidates.)</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Film</th><th class="num">Year</th><th class="num">Exp. total guesses</th><th class="num">1-step avg. left</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">1</td><td class="title">9</td><td class="num">2009</td><td class="num">2.58</td><td class="num">7.1</td></tr>
+          <tr><td class="rank">2</td><td class="title">RED</td><td class="num">2010</td><td class="num">2.59</td><td class="num">7.8</td></tr>
+          <tr><td class="rank">3</td><td class="title">The Secret Life of Walter Mitty</td><td class="num">2013</td><td class="num">2.60</td><td class="num">8.3</td></tr>
+          <tr><td class="rank">4</td><td class="title">The Fast and the Furious: Tokyo Drift</td><td class="num">2006</td><td class="num">2.60</td><td class="num">9.4</td></tr>
+          <tr><td class="rank">5</td><td class="title">Gangster Squad</td><td class="num">2013</td><td class="num">2.60</td><td class="num">8.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede-p" style="margin-top:14px"><b>Restricted to the top-300 most recognizable films:</b></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Film</th><th class="num">Year</th><th class="num">Exp. total guesses</th><th class="num">1-step avg. left</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">1</td><td class="title">Kingdom of Heaven</td><td class="num">2005</td><td class="num">2.67</td><td class="num">11.5</td></tr>
+          <tr><td class="rank">2</td><td class="title">The Maze Runner</td><td class="num">2014</td><td class="num">2.71</td><td class="num">17.3</td></tr>
+          <tr><td class="rank">3</td><td class="title">The Equalizer</td><td class="num">2014</td><td class="num">2.72</td><td class="num">11.2</td></tr>
+          <tr><td class="rank">4</td><td class="title">Real Steel</td><td class="num">2011</td><td class="num">2.74</td><td class="num">15.7</td></tr>
+          <tr><td class="rank">5</td><td class="title">What Happened to Monday</td><td class="num">2017</td><td class="num">2.76</td><td class="num">17.9</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <b><em>9</em> (2009) wins on total guesses, not <em>Allied</em>.</b> Allied leaves fewer films after guess one (6.9 vs 7.1), but its leftover set takes slightly longer to finish, dropping it to 9th on this metric (2.62 guesses). The gap barely matters &mdash; every film in this table wins in under 2.7 guesses on average. For a memorable pick, <em>Kingdom of Heaven</em> edges out <em>The Equalizer</em> here too, though either is fine.
+    </div>
+
+    <h3>Full rankings</h3>
+    <p class="lede-p">The complete top 10 by expected films remaining after one guess, unrestricted and then limited to films you'd actually think to type:</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Film</th><th class="num">Year</th><th class="num">Avg. left</th><th class="num">Worst case</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">1</td><td class="title">Allied</td><td class="num">2016</td><td class="num">6.9</td><td class="num">39</td></tr>
+          <tr><td class="rank">2</td><td class="title">9</td><td class="num">2009</td><td class="num">7.1</td><td class="num">67</td></tr>
+          <tr><td class="rank">3</td><td class="title">RED</td><td class="num">2010</td><td class="num">7.8</td><td class="num">77</td></tr>
+          <tr><td class="rank">4</td><td class="title">The Girl Who Played with Fire</td><td class="num">2009</td><td class="num">7.9</td><td class="num">44</td></tr>
+          <tr><td class="rank">5</td><td class="title">Chronicle</td><td class="num">2012</td><td class="num">8.0</td><td class="num">63</td></tr>
+          <tr><td class="rank">6</td><td class="title">Love &amp; Other Drugs</td><td class="num">2010</td><td class="num">8.0</td><td class="num">42</td></tr>
+          <tr><td class="rank">7</td><td class="title">127 Hours</td><td class="num">2010</td><td class="num">8.2</td><td class="num">35</td></tr>
+          <tr><td class="rank">8</td><td class="title">In the Heart of the Sea</td><td class="num">2015</td><td class="num">8.3</td><td class="num">86</td></tr>
+          <tr><td class="rank">9</td><td class="title">The Secret Life of Walter Mitty</td><td class="num">2013</td><td class="num">8.3</td><td class="num">51</td></tr>
+          <tr><td class="rank">10</td><td class="title">Matchstick Men</td><td class="num">2003</td><td class="num">8.3</td><td class="num">33</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede-p" style="margin-top:14px"><b>Restricted to the 300 most popular films in the pool:</b></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Film</th><th class="num">Year</th><th class="num">Avg. left</th><th class="num">Worst case</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">1</td><td class="title">The Equalizer</td><td class="num">2014</td><td class="num">11.2</td><td class="num">53</td></tr>
+          <tr><td class="rank">2</td><td class="title">Kingdom of Heaven</td><td class="num">2005</td><td class="num">11.5</td><td class="num">61</td></tr>
+          <tr><td class="rank">3</td><td class="title">Real Steel</td><td class="num">2011</td><td class="num">15.7</td><td class="num">84</td></tr>
+          <tr><td class="rank">4</td><td class="title">Fury</td><td class="num">2014</td><td class="num">17.0</td><td class="num">62</td></tr>
+          <tr><td class="rank">5</td><td class="title">Apocalypto</td><td class="num">2006</td><td class="num">17.3</td><td class="num">77</td></tr>
+          <tr><td class="rank">6</td><td class="title">The Maze Runner</td><td class="num">2014</td><td class="num">17.3</td><td class="num">100</td></tr>
+          <tr><td class="rank">7</td><td class="title">Sicario</td><td class="num">2015</td><td class="num">17.6</td><td class="num">79</td></tr>
+          <tr><td class="rank">8</td><td class="title">The Suicide Squad</td><td class="num">2021</td><td class="num">17.9</td><td class="num">87</td></tr>
+          <tr><td class="rank">9</td><td class="title">What Happened to Monday</td><td class="num">2017</td><td class="num">17.9</td><td class="num">105</td></tr>
+          <tr><td class="rank">10</td><td class="title">White Chicks</td><td class="num">2004</td><td class="num">18.4</td><td class="num">60</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="cta-card">
+    <h3>Want to explore the data yourself?</h3>
+    <p>Look up how any guess would split the field, build a hypothetical guess from scratch, or re-rank the best openers using only the clues you trust &mdash; live in your browser, same 3,000-film pool.</p>
+    <a class="cta-btn" href="simulator.html">Open the simulator &rarr;</a>
+  </div>
+
+  <section>
+    <h2><span class="num">05</span>Method, validation &amp; caveats</h2>
+    <p class="lede-p">The pool is pulled live from TMDB: <code>/discover/movie</code> finds candidates by vote count, then <code>/movie/{id}?append_to_response=credits,release_dates</code> pulls genre, cast, crew, revenue, score, studio, and US certification for each in one call. For every candidate guess, I computed its feedback signature against all other films, grouped films with identical signatures, and scored the guess by expected films remaining and by entropy.</p>
+    <div class="callout">
+      <b>Pool validated against real answers.</b> I pulled 20 actual Spotle Movies answers spanning June 23&ndash;July 21, 2026 from third-party answer-archive sites and checked them against this pool: <b>20 of 20 matched</b>, from <em>Vertigo</em> (1958) to <em>Anora</em> (2024). One page also published Spotle's own stated clues for <em>Moneyball</em> &mdash; every field matched our data exactly, evidence Spotle draws from the same underlying TMDB data this analysis does.
+    </div>
+    <details class="methodology">
+      <summary>Full list of approximations (for the skeptical reader)</summary>
+      <div class="fine">
+        <ul>
+          <li>The pool is sized to match Spotle's own "curated ~3,000 films" description via a vote-count threshold, and spot-checked against real answers above. A 20-answer sample can't rule out edge cases &mdash; it's evidence of a good proxy, not proof of an identical list.</li>
+          <li>Studio "sister label" groupings (Disney/Pixar/Marvel, Warner/New Line, etc.) are a hand-built approximation of the real parent-company graph; only 7 major conglomerates (40 individual studio labels) are mapped.</li>
+          <li>"Lead" vs. "supporting" is approximated from TMDB billing order (order 0 = lead), which may not exactly match how Spotle classifies roles.</li>
+          <li>The director "yellow" rule uses real co-director pairs mined from full crew credits &mdash; but it's still bounded by what's in this 3,000-film pool, not all of film history.</li>
+          <li>1.4% of films (42 of 3,000) have no US certification on file in TMDB; these are treated as a distinct "no data" state rather than guessed at.</li>
+          <li>Score is displayed 0&ndash;100 as a whole integer (e.g. TMDB's 7.299 &rarr; "73"). "Exact match" (green) means the two displayed integers agree, not raw float equality.</li>
+          <li>The expected-total-guesses figures use a <em>greedy</em> continuation strategy, not a fully exhaustive search over every possible sequence of guesses &mdash; the latter is what real Wordle-solver research grinds through dedicated compute for. Greedy is a well-established near-optimal approximation, but true optimal-play numbers could differ slightly.</li>
+          <li>Genres are matched exactly (which specific genres overlap), not by count, in every number on this page and in the simulator.</li>
+        </ul>
+        The overall shape of the result &mdash; genre/score/year/box-office carry the opener, cast and director don't (on average) &mdash; is robust to these approximations, since it comes from the size of the pool relative to how many distinct values each attribute can take, not the fine details of any one rule.
+      </div>
+    </details>
+  </section>
+
+  <footer id="footer">
+    Movie data sourced live from The Movie Database (TMDB) API. This product uses the TMDB API but is not endorsed or certified by TMDB. Not affiliated with Spotle Movies or Flatwhite Studios. &middot; <a href="simulator.html">Try the interactive simulator &rarr;</a>
+  </footer>
+
+</div>
