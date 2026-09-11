@@ -366,6 +366,16 @@
   .attr-search-results { margin-top: 18px; }
   .attr-search-results .tbl-wrap { margin-top: 4px; }
 
+  /* Solver clue strip (between guesses) */
+  tr.clue-tr td { border-bottom: 1px solid var(--hair); background: var(--surface-2); padding-top: 0; padding-bottom: 10px; }
+  .clue-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .clue-strip-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-right: 2px; }
+  .clue-tag { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 100px; white-space: nowrap; }
+  .clue-tag.st-green   { background: color-mix(in srgb, var(--good) 18%, var(--surface)); color: var(--good); }
+  .clue-tag.st-yellow  { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: var(--warn); }
+  .clue-tag.st-gray    { background: var(--surface); color: var(--muted); }
+  .clue-tag.st-unknown { background: var(--surface); color: var(--muted); }
+
   .fine {
     font-size: 12.5px;
     color: var(--muted);
@@ -1266,16 +1276,76 @@
     return steps;
   }
 
+  // Human-readable clue states, mirroring the sig* codes used to partition candidates above.
+  function stateFor5(code) {
+    if (code === 'G') return 'green';
+    if (code === 'yu') return 'yellow_up';
+    if (code === 'yd') return 'yellow_down';
+    if (code === 'gu') return 'gray_up';
+    if (code === 'gd') return 'gray_down';
+    return null; // 'u' -- unknown/missing data
+  }
+  function stateFor3(code) {
+    if (code === 'G') return 'green';
+    if (code === 'Y') return 'yellow';
+    if (code === 'g') return 'gray';
+    return null; // 'u'
+  }
+  function chipHtml(label, state) {
+    if (state == null) return `<span class="clue-tag st-unknown">${esc(label)}: n/a</span>`;
+    const arrow = state === 'yellow_up' || state === 'gray_up' ? ' ▲'
+      : state === 'yellow_down' || state === 'gray_down' ? ' ▼' : '';
+    return `<span class="clue-tag ${stClass(state)}">${esc(label)}${arrow}</span>`;
+  }
+
+  function renderClueStrip(guess, target) {
+    const genreChips = (guess.g || [])
+      .map(gname => `<span class="clue-tag ${target._genreSet.has(gname) ? 'st-green' : 'st-gray'}">${esc(gname)}</span>`)
+      .join(' ');
+
+    let castChips = '';
+    if (guess.c5 && guess.c5.length) {
+      const castCodes = sigCast(guess, target);
+      const anyHit = [...castCodes].some(c => c !== 'n');
+      castChips = anyHit
+        ? guess.c5.map(([name], i) => castCodes[i] === 'n' ? '' : `<span class="clue-tag ${castCodes[i] === 'g' ? 'st-green' : 'st-yellow'}">${esc(name)}</span>`).join(' ')
+        : `<span class="clue-tag st-gray">No cast overlap</span>`;
+    }
+
+    const parts = [
+      genreChips && `<span class="clue-strip-label">Genres</span> ${genreChips}`,
+      chipHtml('Year', stateFor5(sigYear(guess, target))),
+      chipHtml('Box office', stateFor5(sigRev(guess, target))),
+      chipHtml('Score', stateFor5(sigScore(guess, target))),
+      castChips && `<span class="clue-strip-label">Cast</span> ${castChips}`,
+      chipHtml('Studio', stateFor3(sigStudio(guess, target))),
+      chipHtml('Director', stateFor3(sigDirector(guess, target))),
+      chipHtml('Rated', stateFor3(sigRated(guess, target))),
+    ].filter(Boolean).join(' ');
+
+    return `<div class="clue-strip">${parts}</div>`;
+  }
+
   function renderSolveResults(target, steps) {
     const resultsEl = document.getElementById('solveResults');
     const last = steps[steps.length - 1];
-    const rows = steps.map(s => `
+    const rows = steps.map(s => {
+      const mainRow = `
       <tr>
         <td class="rank">${s.turn}</td>
         <td class="title">${esc(s.guess.t)}${s.solved ? ' <span style="color:var(--good)">&#10003;</span>' : ''}</td>
         <td class="num">${s.guess.y}</td>
         <td class="num">${s.remainingBefore.toLocaleString()}</td>
-      </tr>`).join('');
+      </tr>`;
+      // The clues this guess would actually reveal against the target -- skip on the
+      // winning guess itself, since every clue there is trivially an exact match.
+      const clueRow = s.solved ? '' : `
+      <tr class="clue-tr">
+        <td></td>
+        <td colspan="3">${renderClueStrip(s.guess, target)}</td>
+      </tr>`;
+      return mainRow + clueRow;
+    }).join('');
     const summary = last.solved
       ? `<div class="callout"><b>${esc(target.t)}</b> (${target.y}) would take <b>${steps.length}</b> guess${steps.length === 1 ? '' : 'es'} with this strategy.</div>`
       : `<div class="callout">Didn&rsquo;t converge within Spotle&rsquo;s ${SOLVE_MAX_GUESSES}-guess limit &mdash; ${last.remainingBefore.toLocaleString()} films were still consistent going into guess ${SOLVE_MAX_GUESSES}. That's rare; it means the answer shares almost every clue with a cluster of very similar films.</div>`;
