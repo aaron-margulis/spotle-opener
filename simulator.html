@@ -1291,11 +1291,13 @@
     if (code === 'g') return 'gray';
     return null; // 'u'
   }
-  function chipHtml(label, state) {
-    if (state == null) return `<span class="clue-tag st-unknown">${esc(label)}: n/a</span>`;
+  // Shows the guess's own value (its year, its box office, ...), colored and arrowed
+  // the way Spotle itself renders a guessed tile -- not an abstract state label.
+  function valueChip(text, state) {
+    if (state == null) return `<span class="clue-tag st-unknown">${esc(text)}</span>`;
     const arrow = state === 'yellow_up' || state === 'gray_up' ? ' ▲'
       : state === 'yellow_down' || state === 'gray_down' ? ' ▼' : '';
-    return `<span class="clue-tag ${stClass(state)}">${esc(label)}${arrow}</span>`;
+    return `<span class="clue-tag ${stClass(state)}">${esc(text)}${arrow}</span>`;
   }
 
   function renderClueStrip(guess, target) {
@@ -1306,21 +1308,28 @@
     let castChips = '';
     if (guess.c5 && guess.c5.length) {
       const castCodes = sigCast(guess, target);
-      const anyHit = [...castCodes].some(c => c !== 'n');
-      castChips = anyHit
-        ? guess.c5.map(([name], i) => castCodes[i] === 'n' ? '' : `<span class="clue-tag ${castCodes[i] === 'g' ? 'st-green' : 'st-yellow'}">${esc(name)}</span>`).join(' ')
-        : `<span class="clue-tag st-gray">No cast overlap</span>`;
+      castChips = guess.c5.map(([name], i) => {
+        const cls = castCodes[i] === 'g' ? 'st-green' : castCodes[i] === 'y' ? 'st-yellow' : 'st-gray';
+        return `<span class="clue-tag ${cls}">${esc(name)}</span>`;
+      }).join(' ');
     }
+
+    const yearChip = valueChip(String(guess.y), stateFor5(sigYear(guess, target)));
+    const revChip = valueChip(formatMoney(guess.r), stateFor5(sigRev(guess, target)));
+    const scoreChip = valueChip(formatScore(guess.s), stateFor5(sigScore(guess, target)));
+    const ratedChip = guess.ra ? valueChip(guess.ra, stateFor3(sigRated(guess, target))) : '';
+    const studioChip = (guess.co && guess.co.length) ? valueChip(guess.co.join(', '), stateFor3(sigStudio(guess, target))) : '';
+    const directorChip = guess.d ? valueChip(guess.d, stateFor3(sigDirector(guess, target))) : '';
 
     const parts = [
       genreChips && `<span class="clue-strip-label">Genres</span> ${genreChips}`,
-      chipHtml('Year', stateFor5(sigYear(guess, target))),
-      chipHtml('Box office', stateFor5(sigRev(guess, target))),
-      chipHtml('Score', stateFor5(sigScore(guess, target))),
+      `<span class="clue-strip-label">Year</span> ${yearChip}`,
+      `<span class="clue-strip-label">Box office</span> ${revChip}`,
+      `<span class="clue-strip-label">Score</span> ${scoreChip}`,
       castChips && `<span class="clue-strip-label">Cast</span> ${castChips}`,
-      chipHtml('Studio', stateFor3(sigStudio(guess, target))),
-      chipHtml('Director', stateFor3(sigDirector(guess, target))),
-      chipHtml('Rated', stateFor3(sigRated(guess, target))),
+      studioChip && `<span class="clue-strip-label">Studio</span> ${studioChip}`,
+      directorChip && `<span class="clue-strip-label">Director</span> ${directorChip}`,
+      ratedChip && `<span class="clue-strip-label">Rated</span> ${ratedChip}`,
     ].filter(Boolean).join(' ');
 
     return `<div class="clue-strip">${parts}</div>`;
