@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Spotle Opener Simulator</title>
 <style>
   :root {
@@ -266,6 +267,7 @@
     margin: 18px 0;
   }
   .explorer-search { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+  .explorer-search[hidden] { display: none; }
   .explorer-search input[type="text"] {
     flex: 1;
     min-width: 220px;
@@ -407,7 +409,7 @@
     <p class="eyebrow">Spotle Movies &middot; interactive tools</p>
     <a class="back-link" href="index.html">&larr; Back to the research &amp; findings</a>
     <h1 class="display">Simulator &amp; explorer</h1>
-    <p class="dek">Two live tools from <a href="index.html" style="color:var(--accent)">the Spotle opener research</a>: look up exactly how any guess would split the field, or re-rank the best openers using only the clues you personally trust. Everything below runs live in your browser against the same 3,000-film pool as the research &mdash; nothing is precomputed.</p>
+    <p class="dek">Three live tools from <a href="index.html" style="color:var(--accent)">the Spotle opener research</a>: look up exactly how any guess would split the field, re-rank the best openers using only the clues you personally trust, or simulate how many guesses it'd actually take to land on a specific movie. Everything below runs live in your browser against the same 3,000-film pool as the research &mdash; nothing is precomputed.</p>
   </header>
 
   <section>
@@ -493,6 +495,36 @@
     </div>
   </section>
 
+  <section>
+    <h2><span class="num">03</span>How many guesses would it take?</h2>
+    <p class="lede-p">Pick a movie that was actually the answer and this plays out the whole game against it: an optimal opener, then whichever guess is best among what's left, turn after turn, until it lands on the target &mdash; the same methodology as the research above, live in your browser.</p>
+    <div class="explorer">
+      <div class="scope-row">
+        <span class="custom-section-label" style="margin:0">Optimize the opening guess for:</span>
+        <label class="metric-radio"><input type="radio" name="solveMetric" value="1step" checked> Fewest films remaining (1 guess)</label>
+        <label class="metric-radio"><input type="radio" name="solveMetric" value="turns"> Fewest total guesses (full game)</label>
+      </div>
+      <p class="explorer-hint" style="margin-top:-6px">Only the opener changes between the two &mdash; every guess after the first always greedily picks whichever candidate leaves the fewest films remaining, the same &ldquo;greedy continuation&rdquo; the research uses throughout (a fully exhaustive search isn't feasible in-browser).</p>
+
+      <div class="custom-section-label">Answer movie</div>
+      <div class="explorer-search">
+        <input type="text" id="solveTarget" list="movieOptions" placeholder="Type the actual answer&hellip; e.g. Inception">
+        <button class="quickpick" id="btnSolveEqualizer" type="button">The Equalizer (2014)</button>
+        <button class="quickpick" id="btnSolveRandom" type="button">Random film</button>
+      </div>
+
+      <label class="attr-toggle" style="margin:14px 0 4px">
+        <input type="checkbox" id="solveCustomStartToggle"> Start from a specific guess instead of the computed optimum
+      </label>
+      <div class="explorer-search" id="solveStartRow" hidden>
+        <input type="text" id="solveStart" list="movieOptions" placeholder="Type your opening guess&hellip; e.g. The Equalizer">
+      </div>
+
+      <button class="quickpick" id="btnSolve" type="button" style="margin-top:10px; padding:10px 16px; font-size:13.5px">Simulate</button>
+      <p class="explorer-hint" id="solveEstimate"></p>
+      <div id="solveResults"></div>
+    </div>
+  </section>
 
   <footer id="footer">
     Movie data sourced live from The Movie Database (TMDB) API. This product uses the TMDB API but is not endorsed or certified by TMDB. Not affiliated with Spotle Movies or Flatwhite Studios. &middot; <a href="index.html" style="color:var(--accent)">Read the full research &rarr;</a>
@@ -1166,6 +1198,157 @@
       btn.textContent = 'Find best openers with these clues';
     }, 20);
   });
+
+  // ---------- Section 03: simulate solving to a known answer ----------
+  const ALL_FNS = ATTR_DEFS.map(d => d.fn);
+  const SOLVE_MAX_GUESSES = 10;
+  const openerCache = {};
+
+  function rankByExpRem(candidates, fns) {
+    const out = candidates.map(g => {
+      const buckets = partitionList(candidates, g, fns);
+      let sumSq = 1, worst = 0;
+      for (const arr of buckets.values()) { sumSq += arr.length * arr.length; if (arr.length > worst) worst = arr.length; }
+      return { guess: g, expRem: sumSq / candidates.length, worst, buckets };
+    });
+    out.sort((a, b) => a.expRem - b.expRem);
+    return out;
+  }
+  function pickBestGuessByExpRem(candidates, fns) {
+    return rankByExpRem(candidates, fns)[0];
+  }
+  function pickBestGuessByTurns(candidates, fns, shortlistSize) {
+    const ranked = rankByExpRem(candidates, fns);
+    const shortlist = ranked.slice(0, Math.min(shortlistSize, ranked.length));
+    let best = null;
+    for (const s of shortlist) {
+      const turns = expectedTurnsForFirstGuess(candidates, s.guess, fns);
+      if (!best || turns < best.turns) best = { guess: s.guess, turns, expRem: s.expRem, buckets: s.buckets };
+    }
+    return best;
+  }
+  // Turn 1 is where the two models can differ; it's the only guess picked from the
+  // whole remaining pool that's worth caching, since it never depends on the target.
+  function getOpeningGuess(model) {
+    if (!openerCache[model]) {
+      openerCache[model] = model === 'turns'
+        ? pickBestGuessByTurns(pool, ALL_FNS, TURNS_SHORTLIST_SIZE)
+        : pickBestGuessByExpRem(pool, ALL_FNS);
+    }
+    return openerCache[model];
+  }
+
+  function simulateSolve(target, model, startGuess) {
+    const fns = ALL_FNS;
+    let candidates = pool;
+    const steps = [];
+    let turn = 1;
+    while (turn <= SOLVE_MAX_GUESSES) {
+      const remainingBefore = candidates.length;
+      let picked;
+      if (turn === 1 && startGuess) {
+        const buckets = partitionList(candidates, startGuess, fns);
+        let sumSq = 1;
+        for (const arr of buckets.values()) sumSq += arr.length * arr.length;
+        picked = { guess: startGuess, expRem: sumSq / candidates.length };
+      } else if (turn === 1) {
+        picked = getOpeningGuess(model);
+      } else {
+        picked = pickBestGuessByExpRem(candidates, fns);
+      }
+      const guess = picked.guess;
+      const solved = guess === target;
+      steps.push({ turn, guess, remainingBefore, solved });
+      if (solved) break;
+      candidates = candidates.filter(t => t !== guess && fns.every(fn => fn(guess, t) === fn(guess, target)));
+      turn++;
+    }
+    return steps;
+  }
+
+  function renderSolveResults(target, steps) {
+    const resultsEl = document.getElementById('solveResults');
+    const last = steps[steps.length - 1];
+    const rows = steps.map(s => `
+      <tr>
+        <td class="rank">${s.turn}</td>
+        <td class="title">${esc(s.guess.t)}${s.solved ? ' <span style="color:var(--good)">&#10003;</span>' : ''}</td>
+        <td class="num">${s.guess.y}</td>
+        <td class="num">${s.remainingBefore.toLocaleString()}</td>
+      </tr>`).join('');
+    const summary = last.solved
+      ? `<div class="callout"><b>${esc(target.t)}</b> (${target.y}) would take <b>${steps.length}</b> guess${steps.length === 1 ? '' : 'es'} with this strategy.</div>`
+      : `<div class="callout">Didn&rsquo;t converge within Spotle&rsquo;s ${SOLVE_MAX_GUESSES}-guess limit &mdash; ${last.remainingBefore.toLocaleString()} films were still consistent going into guess ${SOLVE_MAX_GUESSES}. That's rare; it means the answer shares almost every clue with a cluster of very similar films.</div>`;
+    resultsEl.innerHTML = `
+      <div class="tbl-wrap" style="margin-top:10px">
+        <table>
+          <thead><tr><th></th><th>Guess</th><th class="num">Year</th><th class="num">Candidates left before this guess</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${summary}`;
+  }
+
+  const solveTargetInput = document.getElementById('solveTarget');
+  const solveStartToggle = document.getElementById('solveCustomStartToggle');
+  const solveStartRow = document.getElementById('solveStartRow');
+  const solveStartInput = document.getElementById('solveStart');
+  const btnSolve = document.getElementById('btnSolve');
+  const solveResultsEl = document.getElementById('solveResults');
+
+  solveStartToggle.addEventListener('change', () => {
+    solveStartRow.hidden = !solveStartToggle.checked;
+  });
+
+  function runSolve() {
+    const targetIdx = idxByLabel.get(solveTargetInput.value.trim().toLowerCase());
+    if (targetIdx == null) {
+      solveResultsEl.innerHTML = '<p class="exp-empty">Pick a movie from the suggestions first.</p>';
+      return;
+    }
+    let startGuess = null;
+    if (solveStartToggle.checked) {
+      const startIdx = idxByLabel.get(solveStartInput.value.trim().toLowerCase());
+      if (startIdx == null) {
+        solveResultsEl.innerHTML = '<p class="exp-empty">Pick a starting guess from the suggestions, or turn that option off.</p>';
+        return;
+      }
+      startGuess = pool[startIdx];
+    }
+    const model = document.querySelector('input[name="solveMetric"]:checked').value;
+    const target = pool[targetIdx];
+    const needsHeavyCompute = !startGuess && !openerCache[model];
+    btnSolve.disabled = true;
+    btnSolve.textContent = 'Computing…';
+    solveResultsEl.innerHTML = needsHeavyCompute
+      ? '<p class="exp-empty">Computing the optimal opening guess for this model (one-time, then cached)&hellip;</p>'
+      : '<p class="exp-empty">Simulating&hellip;</p>';
+    setTimeout(() => {
+      const steps = simulateSolve(target, model, startGuess);
+      renderSolveResults(target, steps);
+      btnSolve.disabled = false;
+      btnSolve.textContent = 'Simulate';
+    }, 20);
+  }
+  btnSolve.addEventListener('click', runSolve);
+  [solveTargetInput, solveStartInput].forEach(inp => {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') runSolve(); });
+  });
+  document.getElementById('btnSolveRandom').addEventListener('click', () => {
+    const i = Math.floor(Math.random() * pool.length);
+    solveTargetInput.value = `${pool[i].t} (${pool[i].y})`;
+  });
+  document.getElementById('btnSolveEqualizer').addEventListener('click', () => {
+    for (const [label, i] of idxByLabel) if (label.startsWith('the equalizer (2014')) { solveTargetInput.value = pool[i].t + ' (' + pool[i].y + ')'; break; }
+  });
+
+  (function initSolveEstimate() {
+    const ms1 = estimateSearchMs(pool.length);
+    const msT = ms1 + 0.0006 * pool.length * pool.length;
+    const fmt = ms => { const s = ms / 1000; return s < 1 ? '<1s' : `~${s.toFixed(s < 10 ? 1 : 0)}s`; };
+    document.getElementById('solveEstimate').textContent =
+      `First simulation with "fewest films remaining" takes about ${fmt(ms1)} to compute the optimal opener across all ${pool.length.toLocaleString()} films; "fewest total guesses" takes about ${fmt(msT)}. Both are one-time costs per model \u2014 every simulation after that, for any target movie, is instant. Picking your own starting guess skips this entirely.`;
+  })();
 })();
 </script>
 
